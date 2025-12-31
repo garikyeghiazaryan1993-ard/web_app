@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="hy">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0b1020" />
+  <title>Gate Control</title>
+
+  <!-- Optional: Telegram WebApp API (կաշխատի Telegram-ի ներսում) -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    :root{
+      --bg0:#070A13;
+      --bg1:#0B1020;
+      --card: rgba(255,255,255,.06);
+      --card2: rgba(255,255,255,.09);
+      --stroke: rgba(255,255,255,.12);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.60);
+      --shadow: 0 18px 60px rgba(0,0,0,.55);
+      --r: 18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans Armenian", Arial;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 800px at 20% -10%, rgba(99,102,241,.35), transparent 55%),
+        radial-gradient(900px 700px at 110% 20%, rgba(16,185,129,.30), transparent 55%),
+        radial-gradient(900px 700px at 40% 110%, rgba(245,158,11,.25), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+    }
+    .wrap{
+      width:min(520px, 100%);
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+    .top{
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+      border:1px solid var(--stroke);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      padding:16px 16px 14px;
+      position:relative;
+      overflow:hidden;
+    }
+    .top:before{
+      content:"";
+      position:absolute;
+      inset:-40px -40px auto auto;
+      width:180px;height:180px;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.22), transparent 60%);
+      transform: rotate(18deg);
+      filter: blur(.2px);
+      opacity:.7;
+    }
+    .title{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    h1{
+      margin:0;
+      font-size:18px;
+      letter-spacing:.2px;
+      font-weight:750;
+    }
+    .chip{
+      font-size:12px;
+      color:var(--muted);
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.05);
+      padding:6px 10px;
+      border-radius:999px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      user-select:none;
+    }
+    .dot{
+      width:8px;height:8px;border-radius:999px;
+      background: rgba(16,185,129,.95);
+      box-shadow: 0 0 0 4px rgba(16,185,129,.14);
+    }
+    .sub{
+      margin:10px 0 0;
+      font-size:13px;
+      color:var(--muted);
+      line-height:1.35;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px;
+    }
+    .btn{
+      appearance:none;
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.05));
+      border-radius: 16px;
+      padding:14px 14px 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,.35);
+      color:var(--text);
+      text-align:left;
+      cursor:pointer;
+      position:relative;
+      overflow:hidden;
+      transition: transform .08s ease, filter .2s ease, background .2s ease;
+      min-height:86px;
+    }
+    .btn:active{ transform: translateY(1px) scale(.995); }
+    .btn:hover{ filter: brightness(1.05); }
+
+    .btn .row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .btn .label{
+      font-size:14px;
+      font-weight:800;
+      letter-spacing:.15px;
+    }
+    .btn .hint{
+      margin-top:6px;
+      font-size:12px;
+      color:var(--muted);
+    }
+    .ico{
+      width:40px;height:40px;border-radius:14px;
+      display:grid;place-items:center;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      flex:0 0 auto;
+    }
+    .ico span{font-size:18px}
+
+    .btn[data-kind="parking"] .ico{ background: rgba(59,130,246,.14); border-color: rgba(59,130,246,.25); }
+    .btn[data-kind="yard"]    .ico{ background: rgba(16,185,129,.14); border-color: rgba(16,185,129,.25); }
+    .btn[data-kind="ambul"]   .ico{ background: rgba(239,68,68,.14);  border-color: rgba(239,68,68,.25); }
+    .btn[data-kind="guest"]   .ico{ background: rgba(245,158,11,.14); border-color: rgba(245,158,11,.25); }
+
+    .btn:disabled{
+      cursor:not-allowed;
+      opacity:.72;
+      filter: saturate(.9);
+    }
+    .btn .status{
+      font-size:12px;
+      color: rgba(255,255,255,.72);
+      margin-top:8px;
+      display:none;
+    }
+    .btn.busy .status{ display:block; }
+    .btn.busy .hint{ display:none; }
+
+    .footer{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      padding:12px 14px;
+      border:1px solid var(--stroke);
+      border-radius: var(--r);
+      background: rgba(255,255,255,.04);
+    }
+    .small{
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.35;
+    }
+    .ghost{
+      appearance:none;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.05);
+      color:var(--text);
+      border-radius: 14px;
+      padding:10px 12px;
+      cursor:pointer;
+      font-weight:700;
+      font-size:12px;
+    }
+
+    @media (max-width:420px){
+      .grid{ grid-template-columns:1fr; }
+      .btn{ min-height:78px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <div class="top">
+      <div class="title">
+        <h1>🏠 Gate Control</h1>
+        <div class="chip" id="chip">
+          <span class="dot" id="dot"></span>
+          <span id="chipText">Telegram WebApp</span>
+        </div>
+      </div>
+      <p class="sub" id="sub">
+        Սեղմելուց հետո կոճակը 2 վայրկյան “կսառի” ու կվերականգնվի։
+        Սա աշխատում է հեռախոսի մեջ, ոչ թե ESP32-ի RAM-ում։
+      </p>
+    </div>
+
+    <div class="grid">
+      <button class="btn" data-kind="parking" data-action="PARKING">
+        <div class="row">
+          <div>
+            <div class="label">Պարկինգի մուտք</div>
+            <div class="hint">Բացում / հրաման ուղարկում</div>
+            <div class="status">⏳ Կատարում եմ…</div>
+          </div>
+          <div class="ico"><span>🅿️</span></div>
+        </div>
+      </button>
+
+      <button class="btn" data-kind="yard" data-action="YARD">
+        <div class="row">
+          <div>
+            <div class="label">Բակի մուտք</div>
+            <div class="hint">Բացում / հրաման ուղարկում</div>
+            <div class="status">⏳ Կատարում եմ…</div>
+          </div>
+          <div class="ico"><span>🌳</span></div>
+        </div>
+      </button>
+
+      <button class="btn" data-kind="ambul" data-action="AMBULANCE">
+        <div class="row">
+          <div>
+            <div class="label">Շտապօգնության մուտք</div>
+            <div class="hint">Արտակարգ բացում</div>
+            <div class="status">⏳ Կատարում եմ…</div>
+          </div>
+          <div class="ico"><span>🚨</span></div>
+        </div>
+      </button>
+
+      <button class="btn" data-kind="guest" data-action="GUEST">
+        <div class="row">
+          <div>
+            <div class="label">Հյուրերի մուտք</div>
+            <div class="hint">Ստեղծել հյուրի access</div>
+            <div class="status">⏳ Կատարում եմ…</div>
+          </div>
+          <div class="ico"><span>🔑</span></div>
+        </div>
+      </button>
+    </div>
+
+    <div class="footer">
+      <div class="small" id="footerText">
+        Եթե Telegram-ի ներսում ես՝ կաշխատի “Main Button”-ը և հարմար feedback կտա։
+      </div>
+      <button class="ghost" id="closeBtn">Փակել</button>
+    </div>
+
+  </div>
+
+  <script>
+    // Telegram WebApp object (եթե Telegram-ի մեջ է)
+    const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+
+    // UI: Telegram-ում ավելի “native” լինի
+    if (tg) {
+      tg.ready();
+      tg.expand();
+
+      // Dark theme-ին հարմար
+      try {
+        tg.setHeaderColor && tg.setHeaderColor("#0B1020");
+        tg.setBackgroundColor && tg.setBackgroundColor("#070A13");
+      } catch(e){}
+
+      document.getElementById("chipText").textContent = "Connected";
+      // green dot stays
+    } else {
+      document.getElementById("chipText").textContent = "Browser Preview";
+      document.getElementById("dot").style.background = "rgba(245,158,11,.95)";
+      document.getElementById("dot").style.boxShadow = "0 0 0 4px rgba(245,158,11,.14)";
+      document.getElementById("footerText").textContent =
+        "Սա browser preview ա։ Telegram-ում բացելուց հետո WebApp API-ն ակտիվ կլինի։";
+    }
+
+    // ✅ 2 վրկ freeze + text effect
+    const COOLDOWN_MS = 2000;
+    let globalLock = false;
+
+    function setBusy(btn, busy){
+      btn.classList.toggle("busy", busy);
+      btn.disabled = busy;
+    }
+
+    async function onAction(action, btn){
+      if (globalLock) return;
+      globalLock = true;
+
+      // Freeze ALL buttons (ոչ թե միայն մեկը) — որ spam չլինի
+      document.querySelectorAll(".btn").forEach(b => setBusy(b, true));
+
+      // Optional: Telegram haptic feedback
+      try { tg && tg.HapticFeedback && tg.HapticFeedback.impactOccurred("light"); } catch(e){}
+
+      // 👉 Այստեղ դու ունես 3 տարբերակ (frontend-only):
+      // 1) tg.sendData("PARKING") -> bot-ը ստանում ա որպես web_app_data (եթե սցենարը մտցնես)
+      // 2) open link to bot with start param (պարզ տարբերակ)
+      // 3) show popup only (միայն UI, առանց command)
+
+      // ՄԵՆՔ հիմա անում ենք (1) եթե Telegram-ում ենք, else console log
+      if (tg) {
+        try {
+          tg.sendData(JSON.stringify({ action, ts: Date.now() }));
+        } catch(e) {}
+      } else {
+        console.log("ACTION:", action);
+      }
+
+      // Show Telegram main button as feedback (optional)
+      if (tg && tg.MainButton) {
+        tg.MainButton.setText("✅ Ուղարկվեց");
+        tg.MainButton.show();
+        setTimeout(() => tg.MainButton.hide(), 1200);
+      }
+
+      // Wait cooldown
+      await new Promise(r => setTimeout(r, COOLDOWN_MS));
+
+      // Restore
+      document.querySelectorAll(".btn").forEach(b => setBusy(b, false));
+      globalLock = false;
+    }
+
+    document.querySelectorAll(".btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const action = btn.dataset.action;
+        onAction(action, btn);
+      });
+    });
+
+    // Close button
+    document.getElementById("closeBtn").addEventListener("click", () => {
+      if (tg) tg.close();
+      else window.close();
+    });
+  </script>
+</body>
+</html>
